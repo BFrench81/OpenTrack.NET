@@ -1,4 +1,5 @@
-﻿using OpenTrack.Requests;
+﻿using System.Text;
+using OpenTrack.Requests;
 using OpenTrack.Responses;
 using OpenTrack.Utilities;
 using System;
@@ -30,6 +31,8 @@ namespace OpenTrack
     /// </summary>
     public class OpenTrackAPI : IOpenTrackAPI
     {
+        private readonly IMessageLogger _messageLogger;
+
         /// <summary>
         /// The Base Url of the web service end points, i.e. https://ot.dms.dealertrack.com
         /// </summary>
@@ -80,6 +83,17 @@ namespace OpenTrack
             this.Timeout = TimeSpan.FromMinutes(2);
 
             this.DebugMode = false;
+        }
+
+        public OpenTrackAPI(String BaseUrl, String Username, String Password, IMessageLogger messageLogger) : this(BaseUrl, Username, Password)
+        {
+            this._messageLogger = messageLogger;
+        }
+
+        public OpenTrackAPI(String BaseUrl, String Username, String Password, Action<string> messageSending,
+            Action<string> messageReceived) : this(BaseUrl, Username, Password)
+        {
+            this._messageLogger = new DelegateMessageLogger(messageSending, messageReceived);
         }
 
         public IEnumerable<OpenRepairOrderLookupResponseOpenRepairOrder> FindOpenRepairOrders(OpenRepairOrderLookup query)
@@ -337,7 +351,7 @@ namespace OpenTrack
 
             if (this.DebugMode)
             {
-                client.Endpoint.EndpointBehaviors.Add(new MessageInspectorBehavior { Path = this.DebugModeOutputPath });
+                client.Endpoint.EndpointBehaviors.Add(new MessageInspectorBehavior(this._messageLogger));
             }
 
             return client;
@@ -354,7 +368,7 @@ namespace OpenTrack
 
             if (this.DebugMode)
             {
-                client.Endpoint.EndpointBehaviors.Add(new MessageInspectorBehavior { Path = this.DebugModeOutputPath });
+                client.Endpoint.EndpointBehaviors.Add(new MessageInspectorBehavior(this._messageLogger));
             }
 
             return client;
@@ -375,7 +389,7 @@ namespace OpenTrack
 
             if (this.DebugMode)
             {
-                client.Endpoint.EndpointBehaviors.Add(new MessageInspectorBehavior { Path = this.DebugModeOutputPath });
+                client.Endpoint.EndpointBehaviors.Add(new MessageInspectorBehavior(this._messageLogger));
             }
 
             return client;

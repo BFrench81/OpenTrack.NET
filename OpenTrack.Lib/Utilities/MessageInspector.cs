@@ -12,38 +12,45 @@ namespace OpenTrack.Utilities
     /// </summary>
     internal class MessageInspectorBehavior : IEndpointBehavior
     {
+        private readonly IMessageLogger _messageLogger;
+
+        public MessageInspectorBehavior(IMessageLogger messageLogger)
+        {
+            this._messageLogger = messageLogger;
+        }
+
         public string Path { get; set; }
 
         public void ApplyClientBehavior(ServiceEndpoint endpoint, ClientRuntime clientRuntime)
         {
-            clientRuntime.ClientMessageInspectors.Add(new RawMessageInspector { Path = this.Path });
+            clientRuntime.ClientMessageInspectors.Add(new RawMessageInspector(this._messageLogger));
         }
 
         private class RawMessageInspector : IClientMessageInspector
         {
-            public string Path { get; set; }
+            private readonly IMessageLogger _messageLogger;
+
+            public RawMessageInspector(IMessageLogger messageLogger)
+            {
+                this._messageLogger = messageLogger;
+            }
 
             public void AfterReceiveReply(ref Message reply, object correlationState)
             {
-                var fileName = string.Format("Response.{0}.xml", Guid.NewGuid());
-                var filePath = string.IsNullOrWhiteSpace(this.Path) ? fileName : System.IO.Path.Combine(this.Path, fileName);
-
-                using (var w = new StreamWriter(filePath))
+                if (_messageLogger == null)
                 {
-                    w.Write(reply.ToString());
+                    return;
                 }
+                this._messageLogger.MessageReceived(reply.ToString());
             }
 
             public object BeforeSendRequest(ref Message request, IClientChannel channel)
             {
-                var fileName = string.Format("Request.{0}.xml", Guid.NewGuid());
-                var filePath = string.IsNullOrWhiteSpace(this.Path) ? fileName : System.IO.Path.Combine(this.Path, fileName);
-
-                using (var w = new StreamWriter(filePath))
+                if (_messageLogger == null)
                 {
-                    w.Write(request.ToString());
+                    return null;
                 }
-
+                this._messageLogger.MessageSending(request.ToString());
                 return null;
             }
         }
